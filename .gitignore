@@ -1,1 +1,7 @@
 env/
+.env
+*.db
+__pycache__/
+constants_setup.py
+*.sh
+*.coverage
