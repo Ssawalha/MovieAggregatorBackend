@@ -1,5 +1,5 @@
 import sqlite3
-from data.schema import DBPATH
+from constants import DBPATH
 
 class ORM:
     dbpath = DBPATH #<-- can be overwritten in inhereting class if desired. in this case is the same for all tables
@@ -65,6 +65,9 @@ class ORM:
             SQL = """DELETE FROM {} WHERE pk = ?; """.format(self.tablename)
             curs.execute(SQL, (self.values['pk'],))
 
+    def json(self):
+        return {f"{field}": self.values.get(f"{field}") for field in self.fields}
+
     @classmethod
     def create_table(cls):
         """run the cls.createsql SQL command"""
@@ -97,3 +100,20 @@ class ORM:
     @classmethod
     def one_from_pk(cls, pk):
         return cls.one_from_where_clause("WHERE pk=?", (pk,))
+
+    @classmethod
+    def bulk_insert(cls, records):
+        if records in ['', None, []]:
+            return
+    
+        # Check if all records are instances of the same class
+        if not all(isinstance(record, cls) for record in records):
+            raise ValueError("All records must be instances of the same class.")
+
+        with sqlite3.connect(cls.dbpath) as conn:
+            cur = conn.cursor()
+            records_to_insert = [tuple(record.values.values()) for record in records]
+            sanitized = ', '.join(['?'] * len(records[0].values))
+            SQL = f"INSERT INTO {cls.tablename} ({', '.join(records[0].values.keys())}) VALUES ({sanitized})"
+            cur.executemany(SQL, records_to_insert)
+
